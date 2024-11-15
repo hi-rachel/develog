@@ -40,6 +40,24 @@ export type Post = {
   content: string;
 };
 
+export type FolderNode = {
+  id: string;
+  name: string;
+  type: "folder";
+  path: string;
+  children: TreeNode[];
+};
+
+export type FileNode = {
+  id: string;
+  name: string;
+  type: "file";
+  path: string;
+};
+
+export type TreeNode = FileNode | FolderNode;
+
+// content/posts 디렉토리의 모든 마크다운 파일 경로를 재귀적으로 수집
 export const getPostSlugs = () => {
   const getAllFiles = (
     dirPath: string,
@@ -65,6 +83,7 @@ export const getPostSlugs = () => {
   return getAllFiles(postsDirectory);
 };
 
+// slug로 포스트를 찾아 마크다운을 HTML로 변환
 export const getPostBySlug = async (slug: string): Promise<Post | null> => {
   try {
     const realSlug = slug.replace(/\.mdx?$/, "");
@@ -73,19 +92,20 @@ export const getPostBySlug = async (slug: string): Promise<Post | null> => {
 
     const { data, content } = matter(fileContents);
 
+    // 마크다운을 HTML로 변환하는 파이프라인
     const processedContent = await unified()
-      .use(remarkParse) // markdown을 파싱
-      .use(remarkGfm) // GitHub Flavored Markdown 지원
-      .use(remarkMath) // 수학 수식 지원
-      .use(remarkRehype, { allowDangerousHtml: true }) // markdown을 HTML로 변환
-      .use(rehypeRaw) // HTML 태그 허용
-      .use(rehypeKatex) // 수학 수식 렌더링
-      .use(rehypePrism) // 코드 하이라이팅
-      .use(rehypeStringify) // HTML을 문자열로 변환
+      .use(remarkParse) // 마크다운 텍스트를 파싱
+      .use(remarkGfm) // GitHub Flavored Markdown 지원 (표, 체크리스트 등)
+      .use(remarkMath) // 수학 수식 파싱 ($$, $ 등)
+      .use(remarkRehype, { allowDangerousHtml: true }) // 마크다운 AST를 HTML AST로 변환
+      .use(rehypeRaw) // 원본 HTML 태그 허용
+      .use(rehypeKatex) // 수학 수식을 KaTeX로 렌더링
+      .use(rehypePrism) // 코드 블록 구문 강조
+      .use(rehypeStringify) // HTML AST를 문자열로 변환
       .process(content);
 
     return {
-      slug: realSlug,
+      slug: realSlug, // URL 식별자
       title: data.title,
       date: data.date,
       category: data.category,
@@ -99,6 +119,7 @@ export const getPostBySlug = async (slug: string): Promise<Post | null> => {
   }
 };
 
+// 유효한 모든 포스트를 최신순으로 정렬하여 반환
 export const getAllPosts = async (): Promise<Post[]> => {
   const slugs = getPostSlugs();
   const posts = await Promise.all(
@@ -114,8 +135,18 @@ export const getAllPosts = async (): Promise<Post[]> => {
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 };
 
-export const generateCategoryTree = (posts: Post[]) => {
-  const tree: Record<string, any> = {};
+// 포스트들의 카테고리를 기반으로 트리 구조 생성
+export const generateCategoryTree = (posts: Post[]): TreeNode[] => {
+  // 중간 변환을 위한 타입 정의
+  type IntermediateNode = {
+    id: string;
+    name: string;
+    type: "folder" | "file";
+    path: string;
+    children?: Record<string, IntermediateNode>;
+  };
+
+  const tree: Record<string, IntermediateNode> = {};
 
   posts.forEach((post) => {
     const categories = post.category.split("/");
@@ -131,9 +162,10 @@ export const generateCategoryTree = (posts: Post[]) => {
           children: {},
         };
       }
-      current = current[category].children;
+      current = current[category].children ?? {};
     });
 
+    // 파일 노드 추가
     current[post.title] = {
       id: post.slug,
       name: post.title,
@@ -142,11 +174,27 @@ export const generateCategoryTree = (posts: Post[]) => {
     };
   });
 
-  const convertToArray = (obj: Record<string, any>): any[] => {
-    return Object.values(obj).map((item) => ({
-      ...item,
-      children: item.children ? convertToArray(item.children) : undefined,
-    }));
+  // 중간 노드 객체를 최종 트리 배열로 변환
+  const convertToArray = (
+    nodeMap: Record<string, IntermediateNode>
+  ): TreeNode[] => {
+    return Object.values(nodeMap).map((node): TreeNode => {
+      if (node.type === "folder") {
+        return {
+          id: node.id,
+          name: node.name,
+          type: "folder",
+          path: node.path,
+          children: node.children ? convertToArray(node.children) : [],
+        };
+      }
+      return {
+        id: node.id,
+        name: node.name,
+        type: "file",
+        path: node.path,
+      };
+    });
   };
 
   return convertToArray(tree);
