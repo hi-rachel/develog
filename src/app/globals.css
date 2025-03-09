@@ -2,10 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
-
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -63,11 +59,34 @@ body {
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
   * {
     @apply border-border;
   }
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
+  }
+
+  pre {
+    overflow-x: auto;
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+
+  /* Responsive images */
+  img {
+    max-width: 100%;
+    height: auto;
   }
 }
 
@@ -256,4 +275,100 @@ pre[class*="language-"] {
 /* highlight.js theme 커스터마이징 */
 .hljs {
   @apply bg-gray-900 text-gray-100;
+}
+
+/* 사이드바 호버 인디케이터 스타일 */
+.sidebar-hover-indicator {
+  position: fixed;
+  left: 0;
+  top: 3.5rem; /* 헤더 높이와 일치 */
+  width: 8px;
+  height: calc(100vh - 3.5rem);
+  background-color: #5a67d8; /* 인디고 색상 */
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  z-index: 25;
+  cursor: pointer;
+}
+
+.sidebar-hover-indicator:hover {
+  opacity: 0.7 !important;
+}
+
+/* 699px 이하에서 호버 인디케이터 숨김 */
+@media (max-width: 699px) {
+  .sidebar-hover-indicator {
+    display: none;
+  }
+}
+
+/* 사이드바 전환 효과 부드럽게 */
+#sidebar {
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease;
+  will-change: transform;
+  opacity: 0.95; /* 약간 투명하게 설정 */
+}
+
+/* 사이드바 기본 상태 - 큰 화면에서 항상 보이도록 */
+@media (min-width: 700px) {
+  #sidebar {
+    transform: translateX(0) !important;
+    visibility: visible !important;
+  }
+
+  /* 사이드바가 닫혀있을 때 */
+  #sidebar.sidebar-hidden {
+    transform: translateX(-100%) !important;
+    visibility: hidden !important;
+  }
+
+  /* 메인 콘텐츠 가운데 정렬 */
+  main {
+    transition: margin-left 0.3s ease-in-out, max-width 0.3s ease-in-out;
+    margin: 0 auto !important;
+  }
+}
+
+/* 모바일 오버레이 스타일 */
+#sidebar-overlay {
+  transition: opacity 0.3s ease;
+}
+
+#sidebar-overlay:not(.hidden) {
+  opacity: 1;
+}
+
+/* 스크롤바 스타일 */
+#sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+#sidebar::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 2px;
+}
+
+#sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* 사이드바 컨트롤 탭 위치 조정 */
+.sticky-sidebar-tab {
+  z-index: 50;
+  position: fixed;
+  top: 5rem;
+  left: 16rem; /* 사이드바 너비와 일치 */
+  transition: all 0.3s ease;
+}
+
+/* 사이드바가 닫혀있을 때 컨트롤 탭 위치 조정 */
+.sidebar-hidden + main .sticky-sidebar-tab,
+#sidebar.sidebar-hidden ~ .sticky-sidebar-tab {
+  left: 0;
+}
+
+@media (max-width: 699px) {
+  .sticky-sidebar-tab {
+    display: none;
+  }
 }
