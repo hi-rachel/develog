@@ -35,6 +35,7 @@ export type Post = {
   title: string;
   date: string;
   category: string;
+  author: string;
   description: string;
   tags: string[];
   content: string;
@@ -110,6 +111,7 @@ export const getPostBySlug = async (slug: string): Promise<Post | null> => {
       date: data.date,
       category: data.category,
       description: data.description,
+      author: data.author,
       tags: data.tags || [],
       content: processedContent.toString(),
     };
